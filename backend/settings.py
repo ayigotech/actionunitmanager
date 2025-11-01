@@ -49,6 +49,7 @@ DEBUG = True
 ALLOWED_HOSTS = [
     'actionunitmanager.onrender.com',
     '.onrender.com',
+    
 ]
 
 
@@ -57,6 +58,14 @@ CORS_ALLOWED_ORIGINS = [
     "https://actionunitmanager.onrender.com",
     "capacitor://localhost",
     "http://localhost",
+    "https://localhost",  # Add this - your app is running on https://localhost
+]
+
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://actionunitmanager.onrender.com",
+    "capacitor://localhost", 
+    "https://localhost",
 ]
 
 
@@ -80,8 +89,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware', 
+    'django.middleware.security.SecurityMiddleware',
     "whitenoise.middleware.WhiteNoiseMiddleware",  # Add this;  pip install whitenoise
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
