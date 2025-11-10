@@ -17,10 +17,7 @@ app_name = 'authentication'
 urlpatterns = [
     # Church registration - frontend expects: /api/church/register/
     path('church/register/', views.church_signup, name='church-register'),
-    
-   
-    
-    
+
     # Authentication endpoints
     path('auth/superintendent-login/', views.superintendent_login, name='superintendent-login'),
     path('auth/teacher-member-login/', views.teacher_member_simple_login, name='teacher-member-login'),

@@ -48,26 +48,24 @@ DEBUG = True
 
 ALLOWED_HOSTS = [
     'actionunitmanager.onrender.com',
-    '.onrender.com',
-    
+    'actionunitmanager.vercel.app',  # add Vercel frontend
+    '.onrender.com',   
 ]
-
-
 
 CORS_ALLOWED_ORIGINS = [
     "https://actionunitmanager.onrender.com",
+    "https://actionunitmanager.vercel.app",  # add Vercel frontend
     "capacitor://localhost",
     "http://localhost",
-    "https://localhost",  # Add this - your app is running on https://localhost
-]
-
-
-CSRF_TRUSTED_ORIGINS = [
-    "https://actionunitmanager.onrender.com",
-    "capacitor://localhost", 
     "https://localhost",
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://actionunitmanager.onrender.com",
+    "https://actionunitmanager.vercel.app",  # add Vercel frontend
+    "capacitor://localhost", 
+    "https://localhost",
+]
 
 
 # Application definition
