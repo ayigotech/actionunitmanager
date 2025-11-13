@@ -3,9 +3,13 @@ secrets/
 secrets/*.json
 data_excel/
 data_json/
-management/*
+.management/
 backup/*
 backup
+actionunit/management/commands/cleanmigrations.py
+actionunit/management/commands/cleanup_duplicate_phones.py
+actionunit/management/commands/nuclearreset.py
+actionunit/management/commands/resetdb.py
 
 # Ignore environment variables
 .env

@@ -3,7 +3,8 @@ from rest_framework import serializers
 from django.utils import timezone
 from datetime import timedelta
 from django.contrib.auth import authenticate
-from .models import ActionUnitClass, Attendance, BookOrder, Church, ClassMember, ClassTeacher, CustomUser, Offering, OrderItem, QuarterlyBook, Subscription
+from .models import (ActionUnitClass, Attendance, BookOrder, Church, ClassMember, ClassTeacher,
+CustomUser, Offering, OrderItem, QuarterlyBook, Subscription )
 from datetime import date, timedelta
 
 
@@ -348,7 +349,7 @@ class TeacherSerializer(serializers.ModelSerializer):
 
 
 # actionunit/serializers.py  TeacherCreateSerializer
-class TeacherCreateSerializer(serializers.ModelSerializer):
+class TeacherCreateSerializer2222(serializers.ModelSerializer):
     """Serializer for creating Teacher users"""
     class Meta:
         model = CustomUser
@@ -378,6 +379,39 @@ class TeacherCreateSerializer(serializers.ModelSerializer):
             church=church
         )
         return teacher
+
+
+# actionunit/serializers.py  TeacherCreateSerializer
+class TeacherCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating Teacher users"""
+    class Meta:
+        model = CustomUser
+        fields = ['name', 'phone', 'email']
+    
+    def validate_phone(self, value):
+        """Validate that phone doesn't already exist"""
+        if CustomUser.objects.filter(phone=value).exists():
+            raise serializers.ValidationError("A user with this phone number already exists.")
+        return value
+    
+    def create(self, validated_data):
+        church = self.context['request'].user.church
+        
+        # Use phone as username (should be unique)
+        phone = validated_data['phone']
+        
+        # Create teacher user
+        teacher = CustomUser.objects.create_user(
+            username=phone,  # Use phone as username
+            email=validated_data.get('email'),
+            password=None,  # Password will be auto-set in save() method
+            name=validated_data['name'],
+            phone=phone,
+            role='teacher',
+            church=church
+        )
+        return teacher
+
 
 
 
@@ -511,7 +545,7 @@ class ClassMemberSerializer(serializers.ModelSerializer):
 
 
 
-class ClassMemberCreateSerializer(serializers.ModelSerializer):
+class ClassMemberCreateSerializer2222(serializers.ModelSerializer):
     """Serializer for creating Class Members from frontend data"""
     name = serializers.CharField(write_only=True)
     phone = serializers.CharField(write_only=True)
@@ -612,6 +646,127 @@ class ClassMemberCreateSerializer(serializers.ModelSerializer):
 
 
 
+
+class ClassMemberCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating Class Members from frontend data"""
+    name = serializers.CharField(write_only=True)
+    phone = serializers.CharField(write_only=True)
+    email = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    class_id = serializers.IntegerField(write_only=True)
+
+    class Meta:
+        model = ClassMember
+        fields = ['name', 'phone', 'email', 'class_id', 'location']
+
+    def validate_phone(self, value):
+        """Validate phone number format and ensure system-wide uniqueness"""
+        if not value:
+            raise serializers.ValidationError("Phone number is required.")
+        
+        # Strip any whitespace and clean the phone number
+        cleaned_phone = value.strip()
+        
+        # Check if phone already exists in ANY church (system-wide uniqueness)
+        if CustomUser.objects.filter(phone=cleaned_phone).exists():
+            raise serializers.ValidationError("This phone number is already registered in the system.")
+        
+        return cleaned_phone
+
+    def validate(self, data):
+        # Get the church from the current user
+        try:
+            request = self.context.get('request')
+            if not request or not hasattr(request, 'user'):
+                raise serializers.ValidationError('Authentication required.')
+            
+            church = request.user.church
+            if not church:
+                raise serializers.ValidationError('User must belong to a church.')
+                
+            data['church'] = church
+            
+        except AttributeError:
+            raise serializers.ValidationError('Authentication required.')
+
+        # Check if class exists and belongs to the same church
+        try:
+            action_unit_class = ActionUnitClass.objects.get(
+                id=data['class_id'],
+                church=church
+            )
+            data['action_unit_class'] = action_unit_class
+        except ActionUnitClass.DoesNotExist:
+            raise serializers.ValidationError({
+                'class_id': 'Class not found or does not belong to your church.'
+            })
+
+        # Since phone is system-wide unique, we can safely find the user
+        # But we still need to check if they're in this specific church
+        existing_user = CustomUser.objects.filter(phone=data['phone']).first()
+
+        if existing_user:
+            # User exists system-wide, check if they belong to this church
+            if existing_user.church != church:
+                raise serializers.ValidationError({
+                    'phone': 'This phone number is registered with a different church.'
+                })
+            
+            # User exists in this church, check if they're already in this class
+            if ClassMember.objects.filter(
+                action_unit_class=data['action_unit_class'],
+                user=existing_user,
+                is_active=True
+            ).exists():
+                raise serializers.ValidationError({
+                    'phone': 'This member is already in this class.'
+                })
+            
+            data['user'] = existing_user
+        else:
+            # Create new user (phone uniqueness is guaranteed by validate_phone)
+            data['user'] = self.create_member_user(data, church)
+
+        return data
+
+    def create_member_user(self, data, church):
+        """Create a new member user with system-wide unique phone"""
+        # Phone is already validated as unique, so we can use it as username
+        username = data['phone']
+
+        # Create the member user
+        user = CustomUser.objects.create_user(
+            username=username,
+            email=data.get('email', ''),
+            password=None,  # Auto-generated password will use phone's last 6 digits
+            name=data['name'],
+            phone=data['phone'],  # This is system-wide unique
+            role='member',
+            church=church
+        )
+        return user
+
+    def create(self, validated_data):
+        # Remove the frontend fields we don't need for ClassMember creation
+        validated_data.pop('name', None)
+        validated_data.pop('phone', None)
+        validated_data.pop('email', None)
+        validated_data.pop('class_id', None)
+        validated_data.pop('church', None)
+
+        # Create or update the class membership
+        class_member, created = ClassMember.objects.get_or_create(
+            action_unit_class=validated_data['action_unit_class'],
+            user=validated_data['user'],
+            defaults=validated_data
+        )
+        
+        if not created:
+            # Reactivate if previously inactive and update location
+            class_member.is_active = True
+            class_member.location = validated_data.get('location', class_member.location)
+            class_member.save()
+            
+        return class_member
 
 class BulkImportMemberSerializer(serializers.Serializer):
     """Serializer for bulk importing members from Excel/CSV"""

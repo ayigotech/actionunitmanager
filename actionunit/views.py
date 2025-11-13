@@ -730,14 +730,15 @@ def class_members_list_create(request, class_id=None):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    
+
+
 
 
 
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
-def class_member_detail(request, member_id):
+def class_member_detail_original(request, member_id):
     """
     DELETE: Remove member from class (soft delete)
     """
@@ -755,6 +756,41 @@ def class_member_detail(request, member_id):
     member.is_active = False
     member.save()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+
+
+@api_view(['PUT', 'DELETE'])  # Add PUT to allowed methods
+@permission_classes([IsAuthenticated])
+def class_member_detail(request, member_id):
+    """
+    PUT: Update member details
+    DELETE: Remove member from class (soft delete)
+    """
+    try:
+        member = ClassMember.objects.get(
+            id=member_id,
+            action_unit_class__church=request.user.church
+        )
+    except ClassMember.DoesNotExist:
+        return Response(
+            {'error': 'Member not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    if request.method == 'PUT':
+        # Handle member update
+        serializer = ClassMemberSerializer(member, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        # Handle soft delete
+        member.is_active = False
+        member.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 

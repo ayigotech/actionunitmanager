@@ -49,7 +49,9 @@ DEBUG = True
 ALLOWED_HOSTS = [
     'actionunitmanager.onrender.com',
     'actionunitmanager.vercel.app',  # add Vercel frontend
-    '.onrender.com',   
+    '.onrender.com', 
+    # 'localhost:8100',
+    # 'localhost:8000'
 ]
 
 CORS_ALLOWED_ORIGINS = [
@@ -58,6 +60,8 @@ CORS_ALLOWED_ORIGINS = [
     "capacitor://localhost",
     "http://localhost",
     "https://localhost",
+    #  'http://localhost:8100',
+    #  'http://localhost:8000'
 ]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -65,6 +69,8 @@ CSRF_TRUSTED_ORIGINS = [
     "https://actionunitmanager.vercel.app",  # add Vercel frontend
     "capacitor://localhost", 
     "https://localhost",
+    #  'http://localhost:8100',
+    #  'http://localhost:8000'
 ]
 
 
@@ -207,7 +213,7 @@ else:
 
 DATABASES['default']['CONN_MAX_AGE'] = 600  # 10 minutes connection persistence
 
-# And for even better production performance:
+# # And for even better production performance:
 DATABASES['default']['OPTIONS'] = {
     'connect_timeout': 10,
     'sslmode': 'require',
