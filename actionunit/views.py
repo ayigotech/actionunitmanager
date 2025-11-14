@@ -760,12 +760,12 @@ def class_member_detail_original(request, member_id):
 
 
 
-@api_view(['PUT', 'DELETE'])  # Add PUT to allowed methods
+@api_view(['PUT', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def class_member_detail(request, member_id):
     """
     PUT: Update member details
-    DELETE: Remove member from class (soft delete)
+    DELETE: Remove member from class (hard delete)
     """
     try:
         member = ClassMember.objects.get(
@@ -779,19 +779,32 @@ def class_member_detail(request, member_id):
         )
 
     if request.method == 'PUT':
-        # Handle member update
-        serializer = ClassMemberSerializer(member, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Update the User model (where the actual data is stored)
+        user = member.user
+        user.name = request.data.get('member_name', user.name)
+        user.phone = request.data.get('phone', user.phone)
+        user.email = request.data.get('email', user.email)
+        user.save()
+        
+        # Update ClassMember specific fields
+        member.location = request.data.get('location', member.location)
+        member.action_unit_class_id = request.data.get('action_unit_class', member.action_unit_class_id)
+        member.save()
+        
+        # Return updated data
+        return Response({
+            'id': member.id,
+            'member_name': user.name,
+            'phone': user.phone,
+            'email': user.email,
+            'location': member.location,
+            'action_unit_class': member.action_unit_class_id
+        })
 
     elif request.method == 'DELETE':
-        # Handle soft delete
-        member.is_active = False
-        member.save()
+        # Hard delete - remove from database
+        member.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
 
 
 
